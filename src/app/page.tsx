@@ -19,19 +19,28 @@ import DeleteButton from "@/components/DeleteButton";
 export const revalidate = 0; // Disable caching for the dashboard
 
 export default async function DashboardPage() {
-  // Fetch proposals from database
-  const proposals = await db.proposal.findMany({
-    include: {
-      service: true,
-      generatedContent: true,
-      user: true,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+  let proposals: any[] = [];
+  let services: any[] = [];
+  let dbError = null;
 
-  const services = await db.service.findMany();
+  try {
+    // Fetch proposals from database
+    proposals = await db.proposal.findMany({
+      include: {
+        service: true,
+        generatedContent: true,
+        user: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    services = await db.service.findMany();
+  } catch (error: any) {
+    console.error("Database connection error:", error);
+    dbError = error.message || String(error);
+  }
 
   // Metrics calculations
   const totalProposals = proposals.length;
@@ -98,6 +107,13 @@ export default async function DashboardPage() {
             Create Proposal
           </Link>
         </div>
+
+        {dbError && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400">
+            <h3 className="font-bold mb-2">Database Error</h3>
+            <pre className="text-xs whitespace-pre-wrap">{dbError}</pre>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
