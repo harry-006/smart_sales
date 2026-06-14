@@ -1,0 +1,107 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  role      String   @default("SALES") // "ADMIN" or "SALES"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  proposals Proposal[]
+}
+
+model Service {
+  id             String   @id @default(uuid())
+  name           String   @unique // e.g. "Meta Ads"
+  slug           String   @unique // e.g. "meta-ads"
+  description    String
+  deliverables   String   // JSON array of default deliverables
+  processSteps   String   // JSON array of default process steps
+  pricingModel   String   // JSON representation of pricing defaults
+  aiPrompt       String   // Custom system prompt override for this service
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  proposals      Proposal[]
+}
+
+model Template {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  layout      String   // JSON representing order of sections
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  proposals   Proposal[]
+}
+
+model Proposal {
+  id                 String         @id @default(uuid())
+  clientName         String
+  clientWebsite      String
+  competitorWebsite  String
+  goal               String         // Selected proposal goal
+  pricingInput       String         // Raw pricing details (JSON or text)
+  additionalNotes    String?
+  status             String         @default("DRAFT") // DRAFT, GENERATING, GENERATED, APPROVED, ARCHIVED
+  
+  // Relations
+  userId             String
+  user               User           @relation(fields: [userId], references: [id])
+  serviceId          String
+  service            Service        @relation(fields: [serviceId], references: [id])
+  templateId         String
+  template           Template       @relation(fields: [templateId], references: [id])
+  
+  // Generated Content & Customizations
+  generatedContent   GeneratedContent?
+  versions           ProposalVersion[]
+  
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+}
+
+model GeneratedContent {
+  id                 String   @id @default(uuid())
+  proposalId         String   @unique
+  proposal           Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  
+  // AI Generated Sections
+  proposalTitle       String
+  headline           String
+  subheadline        String
+  problemStatement   String
+  opportunityStatement String
+  solutionStatement  String
+  forecastLeads      String?
+  forecastReach      String?
+  forecastTraffic    String?
+  forecastROI        String?
+  costPerLead        String?
+  
+  // Custom arrays saved as stringified JSON
+  deliverables       String   // JSON array of custom deliverables
+  processSteps       String   // JSON array of custom process steps
+  nextSteps          String   // JSON array of custom next steps
+  investmentDetails  String   // JSON object detailing prices
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model ProposalVersion {
+  id          String   @id @default(uuid())
+  proposalId  String
+  proposal    Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  content     String   // Full JSON snapshot of the proposal variables
+  editorName  String
+  createdAt   DateTime @default(now())
+}
